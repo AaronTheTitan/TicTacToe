@@ -21,6 +21,10 @@
 @property (strong, nonatomic) IBOutlet UILabel *labelEight;
 @property (strong, nonatomic) IBOutlet UILabel *labelNine;
 @property (strong, nonatomic) IBOutlet UILabel *whichPlayerLabel;
+@property (strong, nonatomic) IBOutlet UILabel *dragLabel;
+
+@property (strong, nonatomic) IBOutlet UILabel *dragPlay;
+
 
 @property (nonatomic)  NSString *whoWon;
 

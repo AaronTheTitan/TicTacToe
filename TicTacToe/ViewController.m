@@ -10,6 +10,13 @@
 
 @interface ViewController () <UIAlertViewDelegate>
 
+@property CGPoint originalCenter;
+@property CGPoint dragPoint;
+
+@property NSTimer *gameTimer;
+@property int gameTimerStatus;
+@property (strong, nonatomic) IBOutlet UILabel *timerLabel;
+
 
 @end
 
@@ -21,86 +28,94 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-//    self.winningCombinations = @"123_456_789_147_258_369_159_357";
     self.playerX = @"X";
     self.playerO = @"O";
     self.theCat = @"THE CAT";
     self.xWins = @"XXX";
     self.oWins = @"OOO";
 
+//    [self resetTimer];
+    self.winningCombinations = @"123_456_789_147_258_369_159_357";
+
+
+
+    self.gameTimerStatus = 11;
+    self.gameTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(timerCountdown:) userInfo:nil repeats:YES];
+
     self.labelArray = @[self.labelOne, self.labelTwo, self.labelThree, self.labelFour, self.labelFive, self.labelSix, self.labelSeven, self.labelEight, self.labelNine];
 
-    [self labelLocations];
-//    [self whoGoesFirst];
     [self resetGame];
 
 }
 
+- (void) resetTimer {
+    self.gameTimerStatus = 11;
+    [self timerCountdown:self.gameTimer];
+}
 
-- (void)labelLocations {
+- (void) timerCountdown:(NSTimer *)timer {
 
-    self.labelOneLocation = NSStringFromCGPoint([self findLabelUsingPoint:self.labelOne.frame.origin]);
-    self.labelTwoLocation = NSStringFromCGPoint([self findLabelUsingPoint:self.labelTwo.frame.origin]);
-    self.labelThreeLocation = NSStringFromCGPoint([self findLabelUsingPoint:self.labelThree.frame.origin]);
-    self.labelFourLocation = NSStringFromCGPoint([self findLabelUsingPoint:self.labelThree.frame.origin]);
-    self.labelFiveLocation = NSStringFromCGPoint([self findLabelUsingPoint:self.labelFive.frame.origin]);
-    self.labelSixLocation = NSStringFromCGPoint([self findLabelUsingPoint:self.labelSix.frame.origin]);
-    self.labelSevenLocation = NSStringFromCGPoint([self findLabelUsingPoint:self.labelSeven.frame.origin]);
-    self.labelEightLocation = NSStringFromCGPoint([self findLabelUsingPoint:self.labelEight.frame.origin]);
-    self.labelNineLocation = NSStringFromCGPoint([self findLabelUsingPoint:self.labelNine.frame.origin]);
+    self.gameTimerStatus--;
+    self.timerLabel.text = [NSString stringWithFormat:@"%d", self.gameTimerStatus];
 
-    self.whichPlayerLabelLocation = NSStringFromCGPoint([self findLabelUsingPoint:self.whichPlayerLabel.frame.origin]);
+    if (self.gameTimerStatus == 0) {
+//        [self stopTimer:self.gameTimer];
+        [self togglePlayer];
+        [self resetTimer];
+        NSLog(@"You took too long");
+    }
 
 }
 
 
+- (void) stopTimer:(NSTimer *)stopTimer {
 
-// RESET THE BOARD WHEN PLAYER TAPS THE NEW GAME BUTTON
+    [self.gameTimer invalidate];
+    self.gameTimer = nil;
 
-- (IBAction)onNewGameButtonTapped:(UIButton *)sender {
-
-    [self resetGame];
-
-//    [self whoGoesFirst];
-//    self.winningCombinations = @"123_456_789_147_258_369_159_357";
-//
-//    for (UILabel *label in self.labelArray) {
-//        label.text = @"";
-//    }
 }
+
 
 
 // FLIP A COIN TO SEE WHO GOES FIRST
+
 - (NSString *)whoGoesFirst {
+
     self.coinFlip = arc4random_uniform(2);
 
     if (self.coinFlip == 1) {
         [self makeCurrentPlayer:self.playerX];
 
     } else {
+
         [self makeCurrentPlayer:self.playerO];
     }
-    self.whichPlayerLabel.textColor = self.playerColorToPlace;
 
+    self.whichPlayerLabel.textColor = self.playerColorToPlace;
     return self.playerStringToPlace;
 }
 
 
 
 // GET ARGUMENT FOR CURRENT PLAYER AND SET THE BOARD FOR THAT PLAYER
+
 - (NSString *)makeCurrentPlayer:(NSString *)currentPlayer {
 
     if ([currentPlayer isEqualToString:self.playerX]) {
 
         self.playerStringToPlace = self.playerX;
-        self.whichPlayerLabel.text = self.playerX;
+        self.dragPlay.text = self.playerX;
+
         self.playerColorToPlace = [UIColor blueColor];
+        self.dragLabel.textColor = self.playerColorToPlace;
 
     } else {
 
         self.playerStringToPlace = self.playerO;
-        self.whichPlayerLabel.text = self.playerO;
+        self.dragPlay.text = self.playerO;
+
         self.playerColorToPlace = [UIColor redColor];
+        self.dragLabel.textColor = self.playerColorToPlace;
 
     }
 
@@ -109,34 +124,80 @@
 
 
 // TOGGLE BETWEEN PLAYERS
+
 - (void) togglePlayer {
 
     if ([self.playerStringToPlace isEqualToString:self.playerX]) {
+
         [self makeCurrentPlayer:self.playerO];
         self.whichPlayerLabel.textColor = self.playerColorToPlace;
-
+        self.dragLabel.textColor = self.playerColorToPlace;
 
     } else {
+
         [self makeCurrentPlayer:self.playerX];
         self.whichPlayerLabel.textColor = self.playerColorToPlace;
+        self.dragLabel.textColor = self.playerColorToPlace;
+    }
+    [self resetTimer];
 
+}
+
+
+// DRAG X OR O LABEL, TOGGLE PLAYER, CHECK FOR WIN
+
+- (IBAction)onLabelDrag:(UIPanGestureRecognizer *)sender {
+
+    self.dragPoint = [sender locationInView:self.view];
+    self.dragPlay.center = self.dragPoint;
+    self.dragPlay.center = self.dragPoint;
+
+    if (sender.state == UIGestureRecognizerStateEnded) {
+
+        for (UILabel *label in self.labelArray) {
+
+            if (CGRectContainsPoint(label.frame, self.dragPlay.center)) {
+                label.text = self.playerStringToPlace;
+                label.textColor = self.playerColorToPlace;
+
+                [UIView animateWithDuration:.55f animations:^{
+
+                    self.dragPlay.center = self.whichPlayerLabel.center;
+
+                } completion:^(BOOL finished) {
+
+                    if (finished) {
+
+                        self.numberOfMovesMade++;
+
+                        [self checkLabelsForWin:label.text label:label];
+                        [self checkForWinner:self.winningCombinations];
+                        [self togglePlayer];
+                        
+                        NSLog(@"%@", self.winningCombinations);
+                    }
+                }];
+            }
+        }
     }
 }
 
+
+//  WHEN A PLAYER TAPS AN X OR O
 
 - (IBAction)onBoardLabelTapped:(UITapGestureRecognizer *)sender {
 
     self.touchLocation = [sender locationInView:self.view];
     [self findLabelUsingPoint:self.touchLocation];
 
-    self.numberOfMovesMade++;
     NSLog(@"%d", self.numberOfMovesMade);
     
 }
 
 
-// Find point of tapped square, convert to string location, send string as argument to checkForWinner method
-- (CGPoint)findLabelUsingPoint:(CGPoint)point {
+// FIND THE POINT TAPPED, CHANGE IT'S LABEL TO CURRENT PLAYER'S CHAR, CALL checkLabelsForWins METHOD
+
+- (void)findLabelUsingPoint:(CGPoint)point {
 
     for (UILabel *label in self.labelArray) {
         if ([label.text isEqualToString:@""]) {
@@ -145,20 +206,56 @@
                 label.text = self.playerStringToPlace;
                 label.textColor = self.playerColorToPlace;
 
+                self.numberOfMovesMade++;
 
-                [self checkLabels:label.text label:label];
-                NSLog(@"%@", self.winningCombinations);
-
+                [self checkLabelsForWin:label.text label:label];
+                [self checkForWinner:self.winningCombinations];
                 [self togglePlayer];
 
-                //SENDING THE POINT AS A STRING TO checkForWinner
-//                [self checkTappedPoint:NSStringFromCGPoint([self findLabelUsingPoint:label.frame.origin])];
+                NSLog(@"%@", self.winningCombinations);
+
             }
         }
     }
+}
 
-    return point;
 
+// CHECK LABELS FOR WINNING COMBINATIONS
+
+- (NSString*)checkLabelsForWin:(NSString *)labelText label:(UILabel *)label {
+
+        // A MILLION FREAKIN' IF STATMENTS...DIDN'T WANT TO DO IT THIS CRAPPY WAY, BUT OH WELL
+
+        if (label == self.labelOne) {
+            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"1" withString:label.text];
+
+        } else if ([label isEqual: self.labelTwo]) {
+            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"2" withString:label.text];
+
+        } else if ([label isEqual: self.labelThree]) {
+            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"3" withString:label.text];
+
+        } else if ([label isEqual: self.labelFour]) {
+            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"4" withString:label.text];
+
+        } else if ([label isEqual: self.labelFive]) {
+            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"5" withString:label.text];
+
+        } else if ([label isEqual: self.labelSix]) {
+            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"6" withString:label.text];
+
+        } else if ([label isEqual: self.labelSeven]) {
+            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"7" withString:label.text];
+
+        } else if ([label isEqual: self.labelEight]) {
+            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"8" withString:label.text];
+
+        } else if ([label isEqual: self.labelNine]) {
+            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"9" withString:label.text];
+
+        }
+
+    return self.winningCombinations;
 }
 
 
@@ -172,120 +269,48 @@
     } else if ([whoWon containsString:self.oWins]) {
         [self displayWinner:self.playerO];
 
-    } else if ((self.numberOfMovesMade > 8) && (![whoWon containsString:self.xWins] || ![whoWon containsString:self.oWins])) {
-        [self displayWinner:self.theCat];
-        NSLog(@"%@ wins", self.theCat);
+    } else {
 
+        if (self.numberOfMovesMade >= 9) {
+            [self displayWinner:self.theCat];
+        }
     }
-
+    
 }
 
 
 // ALERT POP UP DISPLAYING THE WINNER
 
 - (void)displayWinner:(NSString *)winner {
+//    [self stopTimer:self.gameTimer];
 
-    NSString *playerWinnerMessage = [NSString stringWithFormat:@"%@ WINS! AWWWW YAAAAYYEEAA!", winner];
+
+    NSString *playerWinnerMessage = [NSString stringWithFormat:@"%@ WINS! AW YAYEAH!", winner];
     UIAlertView *winnerAlert = [[UIAlertView alloc] initWithTitle:playerWinnerMessage message:nil delegate:self cancelButtonTitle:@"New Game" otherButtonTitles: nil];
 
     [winnerAlert show];
+//    [self resetGame];
 
 }
+
 
 // AND THEN WHEN THEY DISMISS THE ALERT
 
 - (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex {
     [self resetGame];
+
 }
 
 
+// RESET THE BOARD WHEN PLAYER TAPS THE NEW GAME BUTTON
 
-
-// CHECK LABELS FOR WINNING COMBINATIONS
-
-- (NSString *)checkLabels:(NSString *)labelText label:(UILabel *)label {
-
-    NSLog(@"Current label is %@", labelText);
-
-
-    if ([labelText isEqualToString:self.playerX]) {
-        NSLog(@"playerX");
-
-        // A MILLION FREAKIN' IF STATMENTS...DIDN'T WANT TO DO IT THIS CRAPPY WAY, BUT OH WELL
-
-        if ([label isEqual: self.labelOne]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"1" withString:self.playerX];
-
-        } else if ([label isEqual: self.labelTwo]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"2" withString:self.playerX];
-
-        } else if ([label isEqual: self.labelThree]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"3" withString:self.playerX];
-
-        } else if ([label isEqual: self.labelFour]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"4" withString:self.playerX];
-
-        } else if ([label isEqual: self.labelFive]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"5" withString:self.playerX];
-
-        } else if ([label isEqual: self.labelSix]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"6" withString:self.playerX];
-
-        } else if ([label isEqual: self.labelSeven]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"7" withString:self.playerX];
-
-        } else if ([label isEqual: self.labelEight]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"8" withString:self.playerX];
-
-        } else if ([label isEqual: self.labelNine]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"9" withString:self.playerX];
-
-        }
-
-
-    } else if ([labelText isEqualToString:self.playerO]) {
-        NSLog(@"playerO");
-
-        if ([label isEqual: self.labelOne]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"1" withString:self.playerO];
-
-        } else if ([label isEqual: self.labelTwo]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"2" withString:self.playerO];
-
-        } else if ([label isEqual: self.labelThree]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"3" withString:self.playerO];
-
-        } else if ([label isEqual: self.labelFour]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"4" withString:self.playerO];
-
-        } else if ([label isEqual: self.labelFive]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"5" withString:self.playerO];
-
-        } else if ([label isEqual: self.labelSix]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"6" withString:self.playerO];
-
-        } else if ([label isEqual: self.labelSeven]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"7" withString:self.playerO];
-
-        } else if ([label isEqual: self.labelEight]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"8" withString:self.playerO];
-            
-        } else if ([label isEqual: self.labelNine]) {
-            self.winningCombinations = [self.winningCombinations stringByReplacingOccurrencesOfString:@"8" withString:self.playerO];
-
-        }
-
-
-    } else {
-        NSLog(@"Noboddyyy");
-
-    }
-
-    [self checkForWinner:self.winningCombinations];
-    return self.winningCombinations;
+- (IBAction)onNewGameButtonTapped:(UIButton *)sender {
+    [self resetGame];
 }
+
 
 - (void) resetGame {
+
 
     self.numberOfMovesMade = 0;
     self.winningCombinations = @"123_456_789_147_258_369_159_357";
@@ -295,6 +320,9 @@
     }
 
     [self whoGoesFirst];
+    [self resetTimer];
+
+
 
 }
 
