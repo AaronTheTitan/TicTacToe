@@ -34,16 +34,12 @@
     self.xWins = @"XXX";
     self.oWins = @"OOO";
 
-//    [self resetTimer];
     self.winningCombinations = @"123_456_789_147_258_369_159_357";
-
-
 
     self.gameTimerStatus = 11;
     self.gameTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(timerCountdown:) userInfo:nil repeats:YES];
 
     self.labelArray = @[self.labelOne, self.labelTwo, self.labelThree, self.labelFour, self.labelFive, self.labelSix, self.labelSeven, self.labelEight, self.labelNine];
-
     [self resetGame];
 
 }
@@ -59,7 +55,6 @@
     self.timerLabel.text = [NSString stringWithFormat:@"%d", self.gameTimerStatus];
 
     if (self.gameTimerStatus == 0) {
-//        [self stopTimer:self.gameTimer];
         [self togglePlayer];
         [self resetTimer];
         NSLog(@"You took too long");
@@ -74,7 +69,6 @@
     self.gameTimer = nil;
 
 }
-
 
 
 // FLIP A COIN TO SEE WHO GOES FIRST
@@ -311,7 +305,6 @@
 
 - (void) resetGame {
 
-
     self.numberOfMovesMade = 0;
     self.winningCombinations = @"123_456_789_147_258_369_159_357";
 
@@ -321,8 +314,6 @@
 
     [self whoGoesFirst];
     [self resetTimer];
-
-
 
 }
 
